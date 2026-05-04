@@ -1,13 +1,13 @@
 #include "TouchScreen.h"
 
-TouchScreen::TouchScreen(gpio_num_t irq, gpio_num_t do_pin, gpio_num_t din_pin, gpio_num_t cs, gpio_num_t clk)
+// constructor
+TouchScreen::TouchScreen(spi_device_handle_t handle, gpio_num_t irqPin, gpio_num_t csPin)
+    : _spiHandle(handle), T_IRQ_Pin(irqPin), T_CS_Pin(csPin)
 {
 }
 
-void TouchScreen::initialize()
+// methods
+void TouchScreen::begin()
 {
-}
 
-void TouchScreen::clear()
-{
 }
