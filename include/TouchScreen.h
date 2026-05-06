@@ -15,8 +15,15 @@ private:
     gpio_num_t T_IRQ_Pin;
     gpio_num_t T_CS_Pin;
     spi_device_handle_t _spiHandle;
-    // IRAM_ATTR is a special ESP32 attribute that place the function in internal 
-    // RAM for faster execution which is crucial for interrupts
+
+    /*  - IRAM_ATTR - ESP32 attribute that places the function in internal RAM to 
+          execute faster. Good for interrupts.
+        - type void* arg is a generic pointer to memory and the placeholder 
+          argument that irq_handler will use to put the 'this' pointer in that 
+          location.
+        - when irq_handler is called the argument used is the 'this' pointer. 
+          This way, C++'s 'this' member is placed in memory like in C.
+    */
     static void IRAM_ATTR irq_handler(void* arg);
     void handle_touch();    // handles the logic
 
