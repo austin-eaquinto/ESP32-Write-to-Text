@@ -15,6 +15,7 @@ private:
   gpio_num_t T_IRQ_Pin;
   gpio_num_t T_CS_Pin;
   spi_device_handle_t _spiHandle;
+  static volatile bool isTouched;
 
   /*  - IRAM_ATTR - ESP32 attribute that places the function in internal RAM to
         execute faster. Good for interrupts.
@@ -32,6 +33,11 @@ public:
   // constructors
   TouchScreen();
   TouchScreen(spi_device_handle_t _spiHandle, gpio_num_t irqPin, gpio_num_t csPin);
+
+  // getters
+  static bool getIsTouched() { return isTouched; }
+  static bool setIsTouched(bool value) { isTouched = value; }
+
   // methods
   void begin();
 };

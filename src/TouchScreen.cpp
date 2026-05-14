@@ -32,11 +32,37 @@ void TouchScreen::begin()
     gpio_isr_handler_add(T_IRQ_Pin, irq_handler, this);
 }
 
+// ISR that runs if the screen is touched
 void IRAM_ATTR TouchScreen::irq_handler(void* arg)
 {
     // casting the generic void pointer 'arg' to a TouchScreen pointer
+        /*  ...Explicit Type Cast...
+            - "Take this variable arg and treat it as a pointer to an object of type
+            TouchScreen." 
+            - TouchScreen: the name of the Class or struct
+            - * indicates a pointer type
+            - (TouchScreen*) is the cast operator that forces the conversion
+            - arg: the variable being converted which is usually a pointer of a 
+            different type, like void* (see irq_handler's argument type). */
     TouchScreen* ts = (TouchScreen*)arg;
 
+        /* I left this commented out code here to help me remember what I learned 
+            about SPI communication speed. the IRAM_ATTR type is really fast and 
+            comparatively SPI communication is very slow. With the code here the 
+            interrupt would have happened but then had to wait for the SPI to finish
+            communicating before it could finish. This could cause big delays because
+            it freezes the CPU until complete. handle_touch was moved into main and
+            a static flag isTouched was created in TouchScreen.h.
+
+            A lot of functions used for SPI are blocking, which causes crashes in an
+            ISR.
+            
+            Process: Screen is touched->irq_handler runs and sets flag to true->flag 
+            is read in main.cpp in an if statement->if flag is true, ISR runs and 
+            the flag is set to false */
     // use the pointer to call the logic handler
-    ts->handle_touch();
+    // ts->handle_touch();
+
+    // the Flag used to tell the CPU there is an interrupt/ the screen was touched
+    isTouched = true;
 }

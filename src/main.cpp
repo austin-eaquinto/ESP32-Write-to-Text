@@ -56,4 +56,14 @@ void app_main() {
     //     .clock_speed_hz = ,
     //     .spics_io_num = 5
     // };
+
+    while(true) {
+        if (TouchScreen::getIsTouched())    // if its true, run this block
+        {
+            // run ISR for TouchScreen
+            // ts.handle_touch();
+            // reset flag
+            TouchScreen::setIsTouched(false);
+        }
+    }
 }
