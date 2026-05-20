@@ -58,12 +58,6 @@ void app_main() {
     // };
 
     while(true) {
-        if (TouchScreen::getIsTouched())    // if its true, run this block
-        {
-            // run ISR for TouchScreen
-            // ts.handle_touch();
-            // reset flag
-            TouchScreen::setIsTouched(false);
-        }
+        ts.screenTouched();
     }
 }

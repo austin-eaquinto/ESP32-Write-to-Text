@@ -1,4 +1,5 @@
 #include "TouchScreen.h"
+#include <cstring>>
 
 // constructors
 // TouchScreen::TouchScreen();
@@ -30,6 +31,36 @@ void TouchScreen::begin()
     // ESP-IDF function to connect a specific pin to my irq_handler
     // needs 3 args. the pin number, function address and the argument to pass to this function/address of current object
     gpio_isr_handler_add(T_IRQ_Pin, irq_handler, this);
+}
+
+// SPI is full duplex
+// setting up and using the XPT2046 chip that handles touch on the screen
+void TouchScreen::handle_touch()
+{
+    uint8_t X = 0x90;   // the X coordinate??
+    uint8_t tx_buf[3] = {X, 0x00, 0x00};    // sends the command, keeps clk running to listen for answer
+    uint8_t rx_buf[3] = {0x00,0x00,0x00};   // receiver. bits that leave tx_buf enter here
+
+    /* Recreated each time this function is called. Standard way to do it.
+        Created locally on the stack.*/
+    spi_transaction_t t;        // initialize the struct
+    // used here to zero out memory
+    // args are: starting address of t, the value to be set, and # of bytes to fill
+    memset(&t, 0, sizeof(t));
+    /* set the properties of t (fill out the paper form) */
+    t.length = 24;  // how many bits to clock out over the wire during transmission. 8 bits to send out, 16 to recieve 12
+    t.tx_buffer = tx_buf;   // points master device to the command byte
+    t.rx_buffer = rx_buf;    // doesn't need '&' bc/array naturally points to its start
+
+    if (gpio_get_level(T_IRQ_Pin) == 0) // check the state of the interrupt pin
+    {
+        gpio_set_level(T_CS_Pin, 0);    // set the state of the Chip Select pin
+    }
+
+    // transmit the struct 't' over the SPI bus
+    // args: (configured SPI device handle, struct pointer)
+    // with this size of data (24 bits) polling is more efficient here
+    spi_device_polling_transmit(_spiHandle, &t);
 }
 
 // ISR that runs if the screen is touched
@@ -64,5 +95,17 @@ void IRAM_ATTR TouchScreen::irq_handler(void* arg)
     // ts->handle_touch();
 
     // the Flag used to tell the CPU there is an interrupt/ the screen was touched
-    isTouched = true;
+    ts->_touchTriggered = true;
+}
+
+// Checks if the screen was touched and runs logic if true
+bool TouchScreen::screenTouched()
+{
+    if(_touchTriggered)
+    {
+        handle_touch();     // handle the logic of the touchscreen
+        _touchTriggered = false;
+        return true;
+    }
+    return false;
 }
