@@ -35,33 +35,35 @@ void TouchScreen::begin()
 
 // SPI is full duplex
 // setting up and using the XPT2046 chip that handles touch on the screen
+// get the start X and Y coordinates on the screen where the user touches
 void TouchScreen::handle_touch()
 {
-    uint8_t X = 0x90;                       // the X coordinate??
-    uint8_t tx_buf[3] = {X, 0x00, 0x00};    // sends the command, keeps clk running to listen for answer
-    uint8_t rx_buf[3] = {0x00, 0x00, 0x00}; // receiver. bits that leave tx_buf enter here
-
     /* Recreated each time this function is called. Standard way to do it.
         Created locally on the stack.*/
-    spi_transaction_t t; // initialize the struct
+    uint8_t X = 0x90;                       // the X coordinate
+    uint8_t tx_buf[3] = {X, 0x00, 0x00};    // sends the command, keeps clk running to listen for answer
+    uint8_t rx_buf[3] = {0x00, 0x00, 0x00}; // receiver. bits that leave tx_buf enter here
+    spi_transaction_t tx; // initialize the struct
+
     // used here to zero out memory
     // args are: starting address of t, the value to be set, and # of bytes to fill
-    memset(&t, 0, sizeof(t));
+    memset(&tx, 0, sizeof(tx));
     /* set the properties of t (fill out the paper form) */
-    t.length = 24;        // how many bits to clock out over the wire during transmission. 8 bits to send out, 16 to recieve 12
-    t.tx_buffer = tx_buf; // points master device to the command byte
-    t.rx_buffer = rx_buf; // doesn't need '&' bc/array naturally points to its start
+    tx.length = 24;        // how many bits to clock out over the wire during transmission. 8 bits to send out, 16 to recieve 12
+    tx.tx_buffer = tx_buf; // points master device to the command byte
+    tx.rx_buffer = rx_buf; // doesn't need '&' bc/array naturally points to its start
 
-    if (gpio_get_level(T_IRQ_Pin) == 0) // check the state of the interrupt pin
-    {
-        gpio_set_level(T_CS_Pin, 0); // set the state of the Chip Select pin
-    }
+    // start listening for X coordinates
+    gpio_set_level(T_CS_Pin, 0); // set the state of the Chip Select pin. "Pick me!"
 
     // transmit the struct 't' over the SPI bus
     // args: (configured SPI device handle, struct pointer)
     // with this size of data (24 bits) polling is more efficient here
-    spi_device_polling_transmit(_spiHandle, &t);
+    spi_device_polling_transmit(_spiHandle, &tx); // transmit X coordinates
+    // reset the CS pin to release the microprocessor from listening
+    gpio_set_level(T_CS_Pin, 1);
 
+    /* BELOW HERE--Logic handled by the microprocessor */
     // shift the bits
     /* 1. When the data is sent it is initially in the buffer following state (d = data)
         - data received = 0000 0000 0ddd dddd dddd d000
@@ -78,9 +80,31 @@ void TouchScreen::handle_touch()
     // put bits 4-0 into locations 4-0
     uint16_t lower_data_bits = rx_buf[2] >> 3; // uint16_t instead of uint8_t so that C++ doesn't have to do extra work behind the scenes to convert for OR op
     // bitwise OR together to get final data value. Using uint16_t because the data is 12 bits total
-    uint16_t raw_coordinates = upper_data_bits | lower_data_bits;
-    // reset the chip select pin to release the microprocessor from listening
+    uint16_t final_x = upper_data_bits | lower_data_bits;
+
+    /* BELOW HERE--Y coordinate stuff */
+    // create the variables + buffers
+    uint8_t Y = 0xD0;                       // the Y coordinate
+    uint8_t ty_buf[3] = {Y, 0x00, 0x00};
+    uint8_t ry_buf[3] = {0x00, 0x00, 0x00};
+    spi_transaction_t ty;
+
+    // get the size of
+    memset(&ty, 0, sizeof(ty));
+
+    ty.length = 24;
+    ty.tx_buffer = ty_buf;
+    ty.rx_buffer = ry_buf;
+
+    gpio_set_level(T_CS_Pin, 0);
+
+    spi_device_polling_transmit(_spiHandle, &ty);
+
     gpio_set_level(T_CS_Pin, 1);
+
+    upper_data_bits = ry_buf[1] << 5;
+    lower_data_bits = ry_buf[2] >> 3;
+    uint16_t final_y = upper_data_bits | lower_data_bits;
 }
 
 // ISR that runs if the screen is touched
