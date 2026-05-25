@@ -16,6 +16,10 @@ private:
   gpio_num_t T_CS_Pin;
   spi_device_handle_t _spiHandle;
   volatile bool _touchTriggered;
+  uint16_t _rawX;
+  uint16_t _rawY;
+  uint16_t _pixelX;
+  uint16_t _pixelY;
 
   /*  - IRAM_ATTR - ESP32 attribute that places the function in internal RAM to
         execute faster. Good for interrupts.
@@ -26,13 +30,17 @@ private:
         This way, C++'s 'this' member is placed in memory like in C.
       - it runs then is let go because of the void type.
   */
-  static void IRAM_ATTR irq_handler(void *arg);
+  static void irq_handler(void *arg);
   void handle_touch(); // handles the logic
 
 public:
   // constructors
   TouchScreen();
-  TouchScreen(spi_device_handle_t _spiHandle, gpio_num_t irqPin, gpio_num_t csPin);
+  TouchScreen(gpio_num_t irqPin, gpio_num_t csPin, spi_device_handle_t handle);
+
+  // getters
+  uint16_t get_X() { return _rawX; }
+  uint16_t get_Y() { return _rawY; }
 
   // methods
   void begin();

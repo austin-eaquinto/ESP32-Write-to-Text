@@ -1,10 +1,14 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "TouchScreen.h"
-#include <cstring>>
+#include "esp_attr.h"
+#include "esp_timer.h"
+#include <cstring>
 
 // constructors
 // TouchScreen::TouchScreen();
-TouchScreen::TouchScreen(spi_device_handle_t handle, gpio_num_t irqPin, gpio_num_t csPin)
-    : _spiHandle(handle), T_IRQ_Pin(irqPin), T_CS_Pin(csPin)
+TouchScreen::TouchScreen(gpio_num_t irqPin, gpio_num_t csPin, spi_device_handle_t handle)
+    : T_IRQ_Pin(irqPin), T_CS_Pin(csPin), _spiHandle(handle)
 {
 }
 
@@ -15,16 +19,18 @@ void TouchScreen::begin()
        - "Think of the gpio_config_t struct as a literal paper form you are
           filling out for the ESP32’s hardware department." It's just paper/form.
           I'm just filling out the sections. */
-    gpio_config_t touch;
+    gpio_config_t touch{};  // here {} sets all elements of the struct to zero's. This prevents garbage data in unused elements.
     /*  1ULL means the number 1 as an 'unsigned long long' integer.
         It can't be negative and takes up 64 bits.
         Type of uint64_t to handle the 64 bits. */
     touch.pin_bit_mask = (1ULL << T_IRQ_Pin);
     touch.mode = GPIO_MODE_INPUT;               // set as an input
     touch.pull_up_en = GPIO_PULLUP_ENABLE;      // set resistors
-    touch.pull_down_en = GPIO_PULLDOWN_DISABLE; //
-    touch.intr_type = GPIO_INTR_NEGEDGE;        // the interrupt trigger
+    touch.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    touch.intr_type = GPIO_INTR_NEGEDGE;        // the interrupt trigger. Runs only if volate is 0.0 (actual touch value)
     gpio_config(&touch);                        // submit the filled out paper (instructions) to hardware
+
+    gpio_set_intr_type(T_IRQ_Pin, GPIO_INTR_NEGEDGE);
 
     // ESP-IDF function to start the service that listens for interrupts
     // gpio_install_isr_service(0);
@@ -54,14 +60,16 @@ void TouchScreen::handle_touch()
     tx.rx_buffer = rx_buf; // doesn't need '&' bc/array naturally points to its start
 
     // start listening for X coordinates
-    gpio_set_level(T_CS_Pin, 0); // set the state of the Chip Select pin. "Pick me!"
+    // gpio_set_level(T_CS_Pin, 0); // set the state of the Chip Select pin. "Pick me!"
 
     // transmit the struct 't' over the SPI bus
     // args: (configured SPI device handle, struct pointer)
     // with this size of data (24 bits) polling is more efficient here
     spi_device_polling_transmit(_spiHandle, &tx); // transmit X coordinates
     // reset the CS pin to release the microprocessor from listening
-    gpio_set_level(T_CS_Pin, 1);
+    // gpio_set_level(T_CS_Pin, 1);
+
+    // printf("RAW RX BUFFERS -> [0]: 0x%02X, [1]: 0x%02X, [2]: 0x%02X\n", rx_buf[0], rx_buf[1], rx_buf[2]);
 
     /* BELOW HERE--Logic handled by the microprocessor */
     // shift the bits
@@ -76,11 +84,11 @@ void TouchScreen::handle_touch()
            bitwise OR operation */
 
     // put bits 11-5 into locations 11-5
-    uint16_t upper_data_bits = rx_buf[1] << 5; // using uint16_t because I don't want to lose bits to the shift op
+    uint16_t upper_data_bits = (uint16_t)rx_buf[1] << 4; // using uint16_t because I don't want to lose bits to the shift op
     // put bits 4-0 into locations 4-0
-    uint16_t lower_data_bits = rx_buf[2] >> 3; // uint16_t instead of uint8_t so that C++ doesn't have to do extra work behind the scenes to convert for OR op
+    uint16_t lower_data_bits = rx_buf[2] >> 4; // uint16_t instead of uint8_t so that C++ doesn't have to do extra work behind the scenes to convert for OR op
     // bitwise OR together to get final data value. Using uint16_t because the data is 12 bits total
-    uint16_t final_x = upper_data_bits | lower_data_bits;
+    _rawX = upper_data_bits | lower_data_bits; // store X coordinates in .h private variable
 
     /* BELOW HERE--Y coordinate stuff */
     // create the variables + buffers
@@ -96,19 +104,25 @@ void TouchScreen::handle_touch()
     ty.tx_buffer = ty_buf;
     ty.rx_buffer = ry_buf;
 
-    gpio_set_level(T_CS_Pin, 0);
+    // gpio_set_level(T_CS_Pin, 0);
 
     spi_device_polling_transmit(_spiHandle, &ty);
 
-    gpio_set_level(T_CS_Pin, 1);
+    // gpio_set_level(T_CS_Pin, 1);
 
-    upper_data_bits = ry_buf[1] << 5;
-    lower_data_bits = ry_buf[2] >> 3;
-    uint16_t final_y = upper_data_bits | lower_data_bits;
+    uint16_t y_upper = (uint16_t)ry_buf[1] << 4;
+    uint16_t y_lower = ry_buf[2] >> 4;
+    _rawY = y_upper | y_lower; // store Y coordinates in .h private variable
+
+    /* Calculate the raw X and Y data for immediate use in main.cpp
+        1.  
+        width = 320
+        height = 480
+         */
 }
 
 // ISR that runs if the screen is touched
-void IRAM_ATTR TouchScreen::irq_handler(void *arg)
+IRAM_ATTR void TouchScreen::irq_handler(void *arg)
 {
     // casting the generic void pointer 'arg' to a TouchScreen pointer
     /*  ...Explicit Type Cast...
@@ -120,6 +134,8 @@ void IRAM_ATTR TouchScreen::irq_handler(void *arg)
         - arg: the variable being converted which is usually a pointer of a
         different type, like void* (see irq_handler's argument type). */
     TouchScreen *ts = (TouchScreen *)arg;
+
+    gpio_intr_disable(ts->T_IRQ_Pin);   // temporarily disable interrups on the pin so it doesn't lock up the CPU
 
     /* I left this commented out code here to help me remember what I learned
         about SPI communication speed. the IRAM_ATTR type is really fast and
@@ -145,10 +161,32 @@ void IRAM_ATTR TouchScreen::irq_handler(void *arg)
 // Checks if the screen was touched and runs logic if true
 bool TouchScreen::screenTouched()
 {
+    // tracking last screen touch
+    static int64_t lastTouchTime = 0;
+    int64_t currentTime = esp_timer_get_time();
+
     if (_touchTriggered)
     {
-        handle_touch(); // handle the logic of the touchscreen
+            /* DEBOUNCE BLOCK */
+        // if the screen was touched less than 150ms ago, ignore the current touch
+        if (currentTime - lastTouchTime < 150000)
+        {
+            _touchTriggered = false;
+            gpio_intr_enable(T_IRQ_Pin);   // re-enable pin if it was a ghost bounce
+            return false;
+        }
+
+        handle_touch(); // read SPI bus for coordinate data of screen touch
+
+        while (gpio_get_level(T_IRQ_Pin) == 0)
+        {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+        // update timestamp of last successful read
+        lastTouchTime = esp_timer_get_time();
         _touchTriggered = false;
+        gpio_intr_enable(T_IRQ_Pin);   // clear residual triggers, re-enable interrupt for next press
         return true;
     }
     return false;
