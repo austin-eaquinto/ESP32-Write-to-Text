@@ -10,13 +10,16 @@
 #define T_CS_PIN GPIO_NUM_25
 #define T_CLK_PIN GPIO_NUM_18
 #define DEFAULT_VALUE GPIO_NUM_NC
+#define D_CS_PIN GPIO_NUM_5
 
 extern "C" void app_main() {
-    spi_device_handle_t spiHandle = NULL;   // this is a pointer
+    /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE SPI BUS↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+    spi_device_handle_t touchHandle = NULL;   // this is a pointer
+    spi_device_handle_t displayHandle = NULL;
 
     // ESP-IDF function to start the service that listens for interrupts
     gpio_install_isr_service(0);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(50)); // delay here to give the system time to first setup correctly
 
     // define the SPI bus
     spi_bus_config_t spi_bus = {};
@@ -36,6 +39,8 @@ extern "C" void app_main() {
         configuration, DMA channel. 
         '''''THIS IS THE ROAD''''' */
     ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &spi_bus, 1));
+    /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+
 
     /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE TOUCHSCREEN↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
     // configure the touchscreen ⌄⌄⌄
@@ -47,18 +52,27 @@ extern "C" void app_main() {
 
     // add touchscreen to the SPI bus
     // 3 args- Host, Address of configured device, Adress of the handle variable
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &touch_devcfg, &spiHandle));
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &touch_devcfg, &touchHandle));
     
     // instantiate the touchscreen device
-    TouchScreen ts(T_IRQ_PIN, T_CS_PIN, spiHandle);
+    TouchScreen ts(T_IRQ_PIN, T_CS_PIN, touchHandle);
     ts.begin();
     /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 
+
+    /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE DISPLAY SCREEN↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
     // configure the display screen
-    // spi_device_interface_config_t display_devcfg {
-    //     .clock_speed_hz = ,
-    //     .spics_io_num = 5
-    // };
+    spi_device_interface_config_t display_devcfg = {};
+    display_devcfg.clock_speed_hz = 400000;
+    display_devcfg.spics_io_num = D_CS_PIN;
+    // display_devcfg.clock_source = ;
+    // display_devcfg.command_bits = ;
+    // display_devcfg.
+
+    // add display screen to the SPI bus
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &display_devcfg, &displayHandle));
+    /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+
 
     while(true) {
         if (ts.screenTouched())

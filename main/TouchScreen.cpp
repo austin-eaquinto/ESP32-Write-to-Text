@@ -42,6 +42,7 @@ void TouchScreen::begin()
 // SPI is full duplex
 // setting up and using the XPT2046 chip that handles touch on the screen
 // get the start X and Y coordinates on the screen where the user touches
+/* Focused purely on reading the SPI bus. */
 void TouchScreen::handle_touch()
 {
     /* Recreated each time this function is called. Standard way to do it.
@@ -159,6 +160,7 @@ IRAM_ATTR void TouchScreen::irq_handler(void *arg)
 }
 
 // Checks if the screen was touched and runs logic if true
+/* Manages the high-level state machine and timing. See handle_touch() for SPI. */
 bool TouchScreen::screenTouched()
 {
     // tracking last screen touch
@@ -178,6 +180,14 @@ bool TouchScreen::screenTouched()
 
         handle_touch(); // read SPI bus for coordinate data of screen touch
 
+        // filter out touches that are too light
+        if (_rawX == 2047 && _rawY == 0)
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            handle_touch();
+        }
+
+        // wait for user to stop touching, which will end the interrupt signal
         while (gpio_get_level(T_IRQ_Pin) == 0)
         {
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -187,6 +197,12 @@ bool TouchScreen::screenTouched()
         lastTouchTime = esp_timer_get_time();
         _touchTriggered = false;
         gpio_intr_enable(T_IRQ_Pin);   // clear residual triggers, re-enable interrupt for next press
+        
+        if (_rawX == 2047 && _rawY == 0)
+        {
+            return false;
+        }
+        
         return true;
     }
     return false;
