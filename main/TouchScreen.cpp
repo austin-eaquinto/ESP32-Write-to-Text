@@ -7,14 +7,25 @@
 
 // constructors
 // TouchScreen::TouchScreen();
-TouchScreen::TouchScreen(gpio_num_t irqPin, gpio_num_t csPin, spi_device_handle_t handle)
-    : T_IRQ_Pin(irqPin), T_CS_Pin(csPin), _spiHandle(handle)
+TouchScreen::TouchScreen(spi_device_handle_t handle, gpio_num_t irqPin, gpio_num_t csPin)
+    : _spiHandle(handle), T_IRQ_Pin(irqPin), T_CS_Pin(csPin)
 {
 }
 
 // methods
 void TouchScreen::begin()
 {
+    // configure the touchscreen ⌄⌄⌄
+    spi_device_interface_config_t touch_devcfg = {};
+    touch_devcfg.clock_speed_hz = 1 * 1000 * 1000;
+    touch_devcfg.spics_io_num = T_CS_Pin;
+    //
+    touch_devcfg.queue_size = 7;
+
+    // add touchscreen to the SPI bus
+    // 3 args- Host, Address of configured device, Adress of the handle variable
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &touch_devcfg, &_spiHandle));
+
     /* ai's helpful advice for structs:
        - "Think of the gpio_config_t struct as a literal paper form you are
           filling out for the ESP32’s hardware department." It's just paper/form.
@@ -29,6 +40,7 @@ void TouchScreen::begin()
     touch.pull_down_en = GPIO_PULLDOWN_DISABLE;
     touch.intr_type = GPIO_INTR_NEGEDGE;        // the interrupt trigger. Runs only if volate is 0.0 (actual touch value)
     gpio_config(&touch);                        // submit the filled out paper (instructions) to hardware
+
 
     gpio_set_intr_type(T_IRQ_Pin, GPIO_INTR_NEGEDGE);
 

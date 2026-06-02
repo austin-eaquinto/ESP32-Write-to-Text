@@ -1,16 +1,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "TouchScreen.h"
+#include "DisplayScreen.h"
 #include <stdio.h>
 
 // Constants
-#define T_IRQ_PIN GPIO_NUM_34
-#define T_DO_PIN GPIO_NUM_19
-#define T_DIN_PIN GPIO_NUM_23
-#define T_CS_PIN GPIO_NUM_25
-#define T_CLK_PIN GPIO_NUM_18
+#define MISO_PIN GPIO_NUM_19
+#define MOSI_PIN GPIO_NUM_23
+#define MASTER_CLK_PIN GPIO_NUM_18
 #define DEFAULT_VALUE GPIO_NUM_NC
-#define D_CS_PIN GPIO_NUM_5
 
 extern "C" void app_main() {
     /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE SPI BUS↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
@@ -23,11 +21,11 @@ extern "C" void app_main() {
 
     // define the SPI bus
     spi_bus_config_t spi_bus = {};
-    spi_bus.mosi_io_num = T_DIN_PIN;
-    spi_bus.miso_io_num = T_DO_PIN;
-    spi_bus.sclk_io_num = T_CLK_PIN;
-    // these are used for Quad SPI. by setting them to -1 it tells the
-    // ESP-IDF driver that these pins are not connected or used.
+    spi_bus.mosi_io_num = MOSI_PIN;
+    spi_bus.miso_io_num = MISO_PIN;
+    spi_bus.sclk_io_num = MASTER_CLK_PIN;
+        // these are used for Quad SPI. by setting them to -1 it tells the
+        // ESP-IDF driver that these pins are not connected or used.
     spi_bus.quadwp_io_num = GPIO_NUM_NC;
     spi_bus.quadhd_io_num = GPIO_NUM_NC;
     
@@ -43,34 +41,15 @@ extern "C" void app_main() {
 
 
     /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE TOUCHSCREEN↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
-    // configure the touchscreen ⌄⌄⌄
-    spi_device_interface_config_t touch_devcfg = {};
-    touch_devcfg.clock_speed_hz = 1 * 1000 * 1000;
-    touch_devcfg.spics_io_num = T_CS_PIN;
-    //
-    touch_devcfg.queue_size = 7;
-
-    // add touchscreen to the SPI bus
-    // 3 args- Host, Address of configured device, Adress of the handle variable
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &touch_devcfg, &touchHandle));
-    
     // instantiate the touchscreen device
-    TouchScreen ts(T_IRQ_PIN, T_CS_PIN, touchHandle);
+    TouchScreen ts(touchHandle);
     ts.begin();
     /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 
 
     /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE DISPLAY SCREEN↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
-    // configure the display screen
-    spi_device_interface_config_t display_devcfg = {};
-    display_devcfg.clock_speed_hz = 400000;
-    display_devcfg.spics_io_num = D_CS_PIN;
-    // display_devcfg.clock_source = ;
-    // display_devcfg.command_bits = ;
-    // display_devcfg.
-
-    // add display screen to the SPI bus
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &display_devcfg, &displayHandle));
+    DisplayScreen ds(displayHandle);
+    ds.begin();
     /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 
 

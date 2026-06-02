@@ -4,17 +4,20 @@
 #include "driver/gpio.h"       // espidf specific (not Arduino). for gpio_num_t
 #include "driver/spi_master.h" // spi bus handling
 
+/* because the TouchScreen is set up as input only by an interrupt request
+   this class only needs to know about the IRQ Pin and CS Pin. when the screen
+   is touched the isr runs which tells the esp32 to pull T_CS low and send some
+   data */
+#define T_IRQ_PIN GPIO_NUM_34
+#define T_CS_PIN GPIO_NUM_25
+
 class TouchScreen
 {
 private:
   // all caps to match the board labels
-  /* because the TouchScreen is set up as input only by an interrupt request
-     this class only needs to know about the _irqPin and _csPin. when the screen
-     is touched the isr runs which tells the esp32 to pull T_CS low and send some
-     data */
+  spi_device_handle_t _spiHandle;
   gpio_num_t T_IRQ_Pin;
   gpio_num_t T_CS_Pin;
-  spi_device_handle_t _spiHandle;
   volatile bool _touchTriggered;
   uint16_t _rawX;
   uint16_t _rawY;
@@ -36,7 +39,9 @@ private:
 public:
   // constructors
   TouchScreen();
-  TouchScreen(gpio_num_t irqPin, gpio_num_t csPin, spi_device_handle_t handle);
+  TouchScreen(spi_device_handle_t handle, 
+              gpio_num_t irqPin = T_IRQ_PIN, 
+              gpio_num_t csPin = T_CS_PIN);
 
   // getters
   uint16_t get_X() { return _rawX; }
