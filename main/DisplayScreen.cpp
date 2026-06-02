@@ -47,6 +47,29 @@ void DisplayScreen::begin()
 
     // light up the screen
     gpio_set_level(BCKLT_Pin, 1);
+
+    // the struct blueprint of instructions to initialize the screen
+    struct ScreenCycle {
+        uint8_t cmd_byte;   // type of command. "the next data is a command"
+        uint8_t length;     // how long the data for the command is
+        uint8_t data[16];   // the list of commands to follow
+        /* For me: the element just above this comment sets aside 128 bits for data. This 
+            is fine because it is not accessible to a user (read only data) which means 
+            there is no concern for a buffer overflow attack. */
+    };
+
+    // the actual struct instructions that will initialize the screen
+    static const ScreenCycle init_sequence[] = {
+        // { cmd_byte, length, { data bytes } }
+        { 0x11, 0, {} },
+        { 0x3A, 1, {0x55} },
+        { 0x29, 0, {} }
+    };
+
+    // for(int i = 0; i < cmd_num; i++)
+    // {
+    //     sendCommand(init_sequence[i].cmd_byte);
+    // }
 }
 
 void DisplayScreen::sendCommand(uint8_t cmd)
