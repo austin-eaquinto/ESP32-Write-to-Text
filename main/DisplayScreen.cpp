@@ -61,15 +61,38 @@ void DisplayScreen::begin()
     // the actual struct instructions that will initialize the screen
     static const ScreenCycle init_sequence[] = {
         // { cmd_byte, length, { data bytes } }
-        { 0x11, 0, {} },
-        { 0x3A, 1, {0x55} },
-        { 0x29, 0, {} }
+        /*  1. Which setting to adjust.
+            2. How many parameters follow the command.
+                If length = 0, toggle switch
+                If length >= 1, the command requires fine-tuning data
+            3. The configuration values being put into the register. */
+        { 0x11, 0, {} },        // command, no length, so no data
+        { 0x3A, 1, {0x55} },    // command, length = 1 byte, data
+        { 0x29, 0, {} }         // command, no length, so no data
     };
 
-    // for(int i = 0; i < cmd_num; i++)
-    // {
-    //     sendCommand(init_sequence[i].cmd_byte);
-    // }
+    /* Filing cabinet example */
+    int cmd_num = sizeof(init_sequence) / sizeof(init_sequence[0]);
+
+    // a folder in the filing cabinet
+    for(int i = 0; i < cmd_num; i++)
+    {
+        sendCommand(init_sequence[i].cmd_byte);
+        if(init_sequence[i].cmd_byte == 0x11)
+        {
+            vTaskDelay(pdMS_TO_TICKS(120));
+        }
+        // the file(s) in the folder in the filing cabinet
+        /* The specific command to run is had at this point. This line
+            is looking for the length (in bytes) of the command's data 
+        */
+        for (int j = 0; j < init_sequence[i].length; j++)
+        {
+            // the specific command to run from init_sequence
+            // 
+            init_sequence[i].data[j];
+        }
+    }
 }
 
 void DisplayScreen::sendCommand(uint8_t cmd)
