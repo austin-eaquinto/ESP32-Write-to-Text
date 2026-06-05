@@ -1,13 +1,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "TouchScreen.h"
-#include "DisplayScreen.h"
+#include "DisplayScreen.h" 
 #include <stdio.h>
 
 // Constants
-#define MISO_PIN GPIO_NUM_19
-#define MOSI_PIN GPIO_NUM_23
-#define MASTER_CLK_PIN GPIO_NUM_18
+#define MISO_PIN GPIO_NUM_11
+#define MOSI_PIN GPIO_NUM_13
+#define MASTER_CLK_PIN GPIO_NUM_12
 #define DEFAULT_VALUE GPIO_NUM_NC
 
 extern "C" void app_main() {
@@ -36,7 +36,7 @@ extern "C" void app_main() {
         - spi_bus_initialize() requires 3 args. SPI Host, pointer to bus 
         configuration, DMA channel. 
         '''''THIS IS THE ROAD''''' */
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &spi_bus, 1));
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &spi_bus, SPI_DMA_CH_AUTO));
     /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 
 

@@ -4,10 +4,10 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 
-#define D_CS_PIN GPIO_NUM_5
+#define D_CS_PIN GPIO_NUM_6
 #define D_RESET_PIN GPIO_NUM_4
-#define D_DC_PIN GPIO_NUM_26
-#define BCKLT_PIN GPIO_NUM_22
+#define D_DC_PIN GPIO_NUM_17
+#define BCKLT_PIN GPIO_NUM_2
 
 class DisplayScreen
 {

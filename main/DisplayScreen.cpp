@@ -90,7 +90,7 @@ void DisplayScreen::begin()
         {
             // the specific command to run from init_sequence
             // 
-            init_sequence[i].data[j];
+            sendData(init_sequence[i].data[j]);
         }
     }
 }
