@@ -31,6 +31,7 @@ public:
     void begin();
     void sendCommand(uint8_t cmd);
     void sendData(uint8_t data);
+    void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 };
 
 #endif

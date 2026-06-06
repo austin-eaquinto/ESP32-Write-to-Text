@@ -66,9 +66,9 @@ void DisplayScreen::begin()
                 If length = 0, toggle switch
                 If length >= 1, the command requires fine-tuning data
             3. The configuration values being put into the register. */
-        { 0x11, 0, {} },        // command, no length, so no data
-        { 0x3A, 1, {0x55} },    // command, length = 1 byte, data
-        { 0x29, 0, {} }         // command, no length, so no data
+        { 0x11, 0, {} },                // command, no length, so no data
+        { 0x3A, 1, {0x55} },            // command, length = 1 byte, data
+        { 0x29, 0, {} },                // command, no length, so no data
     };
 
     /* Filing cabinet example */
@@ -118,4 +118,29 @@ void DisplayScreen::sendData(uint8_t data)
     tx.tx_buffer = &data;
 
     spi_device_polling_transmit(_dispHandle, &tx);
+}
+
+void DisplayScreen::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+{
+    /* sendData() take args of type uint8_t. To get full data of the x & y coordinates 
+        into the function without losing any bits they have to be shifted. This moves 
+        the upper bits into the lower bit range, sends the data then copies the lower 
+        bits and sends the data again, ensuring all data is sent. */
+    // command to define columns
+    sendCommand(0x2A);
+    // set the beginning and end of window's x-axis
+    sendData(x0 >> 8);
+    sendData(x0 & 0xFF);
+    sendData(x1 >> 8);
+    sendData(x1 & 0xFF);
+    // command to define rows
+    sendCommand(0x2B)
+    // set the beginning and end of window's y-axis
+    sendData(y0 >> 8);
+    sendData(y0 & 0xFF);
+    sendData(y1 >> 8);
+    sendData(y1 & 0xFF);
+    // command that tells the CPU that the window has been drawn and the next data will
+    // be raw pixel colors
+    sendCommand(0x2C);
 }
