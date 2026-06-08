@@ -12,7 +12,7 @@
 class DisplayScreen
 {
 private:
-    spi_device_handle_t _dispHandle;
+    spi_device_handle_t _dispHandle;    // SPI
     gpio_num_t D_CS_Pin;
     gpio_num_t D_RESET_Pin;
     gpio_num_t D_DC_Pin;
@@ -32,6 +32,7 @@ public:
     void sendCommand(uint8_t cmd);
     void sendData(uint8_t data);
     void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
+    void clearScreen(uint16_t color);
 };
 
 #endif

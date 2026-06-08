@@ -120,6 +120,11 @@ void DisplayScreen::sendData(uint8_t data)
     spi_device_polling_transmit(_dispHandle, &tx);
 }
 
+/* The parameters represent the following
+    x0 - the min pixel on X-axis (0)
+    y0 - the min pixel on Y-axis (0)
+    x1 - the max pixel on X-axis (479)
+    y1 - the max pixel on X-axis (319) */
 void DisplayScreen::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
     /* sendData() take args of type uint8_t. To get full data of the x & y coordinates 
@@ -134,7 +139,7 @@ void DisplayScreen::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_
     sendData(x1 >> 8);
     sendData(x1 & 0xFF);
     // command to define rows
-    sendCommand(0x2B)
+    sendCommand(0x2B);
     // set the beginning and end of window's y-axis
     sendData(y0 >> 8);
     sendData(y0 & 0xFF);
@@ -143,4 +148,20 @@ void DisplayScreen::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_
     // command that tells the CPU that the window has been drawn and the next data will
     // be raw pixel colors
     sendCommand(0x2C);
+}
+
+void DisplayScreen::clearScreen(uint16_t color)
+{
+    // set the size to be cleared on the screen
+    setAddrWindow(0,0,479,319); // the whole screen
+
+    /* needs to loop through 480*320 pixels to change the screen to white */
+    for(int i = 0; i <= 479; i++)
+    {
+        for(int j = 0; j <= 319; j++)
+        {
+            sendData();
+            sendData();
+        }
+    }
 }
