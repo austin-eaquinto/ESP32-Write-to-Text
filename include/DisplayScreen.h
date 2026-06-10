@@ -17,6 +17,7 @@ private:
     gpio_num_t D_RESET_Pin;
     gpio_num_t D_DC_Pin;
     gpio_num_t BCKLT_Pin;
+    uint16_t* _dmaBuffer;
 
 public:
     // constructors
@@ -31,6 +32,7 @@ public:
     void begin();
     void sendCommand(uint8_t cmd);
     void sendData(uint8_t data);
+    void sendDataBlock(uint16_t* buffer, size_t size);
     void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
     void clearScreen(uint16_t color);
 };
