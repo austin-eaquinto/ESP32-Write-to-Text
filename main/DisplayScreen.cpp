@@ -89,12 +89,14 @@ void DisplayScreen::begin()
         for (int j = 0; j < init_sequence[i].length; j++)
         {
             // the specific command to run from init_sequence
-            // 
             sendData(init_sequence[i].data[j]);
         }
     }
+
+    clearScreen(0xFFFF);
 }
 
+/* Tells ESP32 that the incoming instruction is a command to follow. */
 void DisplayScreen::sendCommand(uint8_t cmd)
 {
     // tell ST7796S's display it's time to receive a command
@@ -108,6 +110,7 @@ void DisplayScreen::sendCommand(uint8_t cmd)
     spi_device_polling_transmit(_dispHandle, &tx);
 }
 
+/* Tells ESP32 that the incoming instructions are data to do something with. */
 void DisplayScreen::sendData(uint8_t data)
 {
     // tell ST7796S's display it's time to receive data
@@ -153,15 +156,15 @@ void DisplayScreen::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_
 void DisplayScreen::clearScreen(uint16_t color)
 {
     // set the size to be cleared on the screen
-    setAddrWindow(0,0,479,319); // the whole screen
+    setAddrWindow(0,0,319,479); // the whole screen
 
     /* needs to loop through 480*320 pixels to change the screen to white */
     for(int i = 0; i <= 479; i++)
     {
         for(int j = 0; j <= 319; j++)
         {
-            sendData();
-            sendData();
+            sendData(color >> 8);
+            sendData(color & 0xFF);
         }
     }
 }
