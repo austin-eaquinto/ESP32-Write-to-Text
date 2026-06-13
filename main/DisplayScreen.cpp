@@ -11,7 +11,9 @@ DisplayScreen::DisplayScreen(spi_device_handle_t handle, gpio_num_t csPin, gpio_
 // methods
 void DisplayScreen::begin()
 {
-    heap_caps_malloc(&_dmaBuffer);
+    // cast to uint16_t for explicit direction to the compiler & for pixels
+    // for split-frame buffer
+    _dmaBuffer = (uint16_t*) heap_caps_malloc(4092, MALLOC_CAP_DMA);
     /* 1. Initialize the internal private variables in the constructor 
           initializer list.
        2. Fill out the spi_device_interface_config_t and call spi_bus_add_device.
@@ -129,10 +131,12 @@ void DisplayScreen::sendData(uint8_t data)
     2. And how big the block is. */
 void DisplayScreen::sendDataBlock(uint16_t* buffer, size_t size)
 {
+    // set as data to display
     gpio_set_level(D_DC_Pin, 1);
     spi_transaction_t block = {};
     block.length = size * 8;    // for the number of bytes on ST7796S's display (2046)
     block.tx_buffer = buffer;   // struct buffer matches the address to _dmaBuffer
+    // transmit the whole block in one package (x76)
     spi_device_transmit(_dispHandle, &block);
 }
 
