@@ -2,6 +2,7 @@
 #include "freertos/task.h"
 #include "TouchScreen.h"
 #include "DisplayScreen.h" 
+#include "Canvas.h"
 #include <stdio.h>
 
 // Constants
@@ -28,6 +29,8 @@ extern "C" void app_main() {
         // ESP-IDF driver that these pins are not connected or used.
     spi_bus.quadwp_io_num = GPIO_NUM_NC;
     spi_bus.quadhd_io_num = GPIO_NUM_NC;
+    // manually sets the ESP-IDF driver cap. default cap = 4096 bytes
+    spi_bus.max_transfer_sz = 320 * 20 * sizeof(uint16_t); // 12800 bytes
     
     /* -----INITIALIZE THE SPI BUS-----
         -Use ESP_ERROR_CHECK() to make sure the bus is initialized correctly or
@@ -52,8 +55,12 @@ extern "C" void app_main() {
     ds.begin();
     /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 
-
+    /*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓THE CANVAS↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+    Canvas cnv(&ds);
+    /*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+    
     while(true) {
+        cnv.render();
         if (ts.screenTouched())
         {
             printf("X: %u, Y: %u\n", ts.get_X(), ts.get_Y());

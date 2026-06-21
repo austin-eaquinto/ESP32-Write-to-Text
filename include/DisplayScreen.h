@@ -12,17 +12,17 @@
 class DisplayScreen
 {
 private:
-    spi_device_handle_t _dispHandle;    // SPI
+    spi_device_handle_t& _dispHandle;    // SPI
     gpio_num_t D_CS_Pin;
     gpio_num_t D_RESET_Pin;
     gpio_num_t D_DC_Pin;
     gpio_num_t BCKLT_Pin;
-    uint16_t* _dmaBuffer;
+    // uint16_t* _dmaBuffer;
 
 public:
     // constructors
     DisplayScreen();
-    DisplayScreen(spi_device_handle_t handle,
+    DisplayScreen(spi_device_handle_t& handle,
                   gpio_num_t csPin = D_CS_PIN,
                   gpio_num_t resetPin = D_RESET_PIN,
                   gpio_num_t dcPin = D_DC_PIN,

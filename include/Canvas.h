@@ -6,7 +6,7 @@
 #include "DisplayScreen.h"
 
 #define PORTRAIT_WIDTH 320
-#define PORTRAIT_SLICE_HEIGHT 80
+#define PORTRAIT_SLICE_HEIGHT 20
 
 class Canvas
 {
@@ -15,10 +15,10 @@ private:
     uint16_t _frame_slice[PORTRAIT_WIDTH * PORTRAIT_SLICE_HEIGHT];
     DisplayScreen* _display; // so the pixel changes are visible
     uint16_t _sliceYStart;
+    uint16_t* _dmaBuffer;
 
 public:
     // constructors
-    Canvas();
     Canvas(DisplayScreen* frame_buf); // update the screen with lines drawn
 
     // methods

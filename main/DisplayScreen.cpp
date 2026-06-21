@@ -3,7 +3,7 @@
 #include "DisplayScreen.h"
 
 // constructors
-DisplayScreen::DisplayScreen(spi_device_handle_t handle, gpio_num_t csPin, gpio_num_t resetPin, gpio_num_t dcPin, gpio_num_t bckltPin)
+DisplayScreen::DisplayScreen(spi_device_handle_t& handle, gpio_num_t csPin, gpio_num_t resetPin, gpio_num_t dcPin, gpio_num_t bckltPin)
     : _dispHandle(handle), D_CS_Pin(csPin), D_RESET_Pin(resetPin), D_DC_Pin(dcPin), BCKLT_Pin(bckltPin)
 {
 }
@@ -13,7 +13,7 @@ void DisplayScreen::begin()
 {
     // cast to uint16_t for explicit direction to the compiler & for pixels
     // for split-frame buffer
-    _dmaBuffer = (uint16_t*) heap_caps_malloc(4092, MALLOC_CAP_DMA);
+    // _dmaBuffer = (uint16_t*) heap_caps_malloc(4092, MALLOC_CAP_DMA);
     /* 1. Initialize the internal private variables in the constructor 
           initializer list.
        2. Fill out the spi_device_interface_config_t and call spi_bus_add_device.
@@ -39,6 +39,8 @@ void DisplayScreen::begin()
     display.intr_type = GPIO_INTR_DISABLE;      // because outputs don't listen for incoming signals
 
     gpio_config(&display);  // submit the form to the hardware
+
+    gpio_set_level(D_CS_Pin, 0);
 
     // initialization sequence to turn on the display
     gpio_set_level(D_RESET_Pin, 1);
@@ -69,9 +71,14 @@ void DisplayScreen::begin()
                 If length = 0, toggle switch
                 If length >= 1, the command requires fine-tuning data
             3. The configuration values being put into the register. */
-        { 0x11, 0, {} },                // command, no length, so no data
-        { 0x3A, 1, {0x55} },            // command, length = 1 byte, data
-        { 0x29, 0, {} },                // command, no length, so no data
+        { 0xF0, 1, {0xC3} }, // Unlock Command2 Part1
+        { 0xF0, 1, {0x69} }, // Unlock Command2 Part2
+        { 0x36, 1, {0x48} }, // Memory Data Access Control (Portrait/BGR mode)
+        { 0x3A, 1, {0x55} }, // Interface Pixel Format (16-bit / RGB565)
+        { 0xB6, 2, {0x80, 0x02} }, // Display Function Control
+        { 0x11, 0, {}     }, // Exit Sleep Mode
+        // (A delay of 120ms will execute here based on your loop logic)
+        { 0x29, 0, {}     }  // Main Screen Display On
     };
 
     /* Filing cabinet example */
@@ -96,7 +103,9 @@ void DisplayScreen::begin()
         }
     }
 
-    clearScreen(0xFFFF);
+    // commented out because it uses slow polling to fill the entire screen
+    // Canvas::render() solves this issue
+    // clearScreen(0xFFFF);
 }
 
 /* Tells ESP32 that the incoming instruction is a command to follow. */
@@ -131,13 +140,20 @@ void DisplayScreen::sendData(uint8_t data)
     2. And how big the block is. */
 void DisplayScreen::sendDataBlock(uint16_t* buffer, size_t size)
 {
+    printf("DEBUG: sendDataBlock using SPI Handle Address: %p\n", _dispHandle);
+
     // set as data to display
     gpio_set_level(D_DC_Pin, 1);
+
     spi_transaction_t block = {};
-    block.length = size * 8;    // for the number of bytes on ST7796S's display (2046)
+    block.length = size * 16;    // for the number of bytes on ST7796S's display (2046) ---- was * 8
     block.tx_buffer = buffer;   // struct buffer matches the address to _dmaBuffer
     // transmit the whole block in one package (x76)
-    spi_device_transmit(_dispHandle, &block);
+    esp_err_t ret = spi_device_transmit(_dispHandle, &block);
+
+    if (ret != ESP_OK) {
+        printf("ERROR: SPI DMA Transmit Failed! Error Code: 0x%X (%s)\n", ret, esp_err_to_name(ret));
+    }
 }
 
 /* The parameters represent the following

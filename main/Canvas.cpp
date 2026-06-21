@@ -1,9 +1,12 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "Canvas.h"
 
 // constructors
 Canvas::Canvas(DisplayScreen* frame_buf)
     : _display(frame_buf)
 {
+    _dmaBuffer = (uint16_t*) heap_caps_malloc(12800, MALLOC_CAP_DMA);
 }
 
 // methods
@@ -12,7 +15,7 @@ void Canvas::clearCanvas(uint16_t color)
     // create a canvas to draw on
     for(int i = 0; i < (PORTRAIT_WIDTH * PORTRAIT_SLICE_HEIGHT); i++)
     {
-        _frame_slice[i] = color;
+        _dmaBuffer[i] = color;
     }
 }
 
@@ -41,7 +44,7 @@ void Canvas::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16
             // set the starting pixel
             int pixel = (localY * PORTRAIT_WIDTH) + x0;
             // set the pixel to the chosen color
-            _frame_slice[pixel] = color;
+            _dmaBuffer[pixel] = color;
         }
 
         // if x's are same AND y's are same, skip the rest
@@ -69,13 +72,17 @@ void Canvas::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16
     }
 }
 
-/* WIP */
+/* 'Conveyor belt' that sends the display data to the screen */
 void Canvas::render()
 {
-    // clear RAM data
-    clearCanvas(0xFFFF);
-    // drawLine(x0, y0, x1, y1, color);
-    // args- x0,yStart,x1,yEnd
-    _display->setAddrWindow(0,_sliceYStart,319,(_sliceYStart + PORTRAIT_SLICE_HEIGHT - 1));
-    // ...
+    for(_sliceYStart = 0; _sliceYStart < 480; _sliceYStart += PORTRAIT_SLICE_HEIGHT)
+    {
+        // clear RAM data
+        clearCanvas(0xFFFF);
+        drawLine(10, 10, 300, 400, 0x0000);
+        // args- x0,yStart,x1,yEnd
+        _display->setAddrWindow(0,_sliceYStart,319,(_sliceYStart + PORTRAIT_SLICE_HEIGHT - 1));
+        _display->sendDataBlock(_dmaBuffer, PORTRAIT_WIDTH * PORTRAIT_SLICE_HEIGHT);
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
 }
