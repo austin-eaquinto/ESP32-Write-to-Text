@@ -49,3 +49,6 @@ include/secrets.h
 
 # Test reports
 test_results/
+
+# Build logs
+build_log.txt

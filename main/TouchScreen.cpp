@@ -15,11 +15,10 @@ TouchScreen::TouchScreen(spi_device_handle_t handle, gpio_num_t irqPin, gpio_num
 // methods
 void TouchScreen::begin()
 {
-    // configure the touchscreen ⌄⌄⌄
+    // configure the touchscreen
     spi_device_interface_config_t touch_devcfg = {};
     touch_devcfg.clock_speed_hz = 1 * 1000 * 1000;
     touch_devcfg.spics_io_num = T_CS_Pin;
-    //
     touch_devcfg.queue_size = 7;
 
     // add touchscreen to the SPI bus
@@ -38,17 +37,15 @@ void TouchScreen::begin()
     touch.mode = GPIO_MODE_INPUT;               // set as an input
     touch.pull_up_en = GPIO_PULLUP_ENABLE;      // set resistors
     touch.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    touch.intr_type = GPIO_INTR_NEGEDGE;        // the interrupt trigger. Runs only if volate is 0.0 (actual touch value)
+    touch.intr_type = GPIO_INTR_DISABLE;        // the interrupt trigger. Runs only if volate is 0.0 (actual touch value)
     gpio_config(&touch);                        // submit the filled out paper (instructions) to hardware
-
-
-    gpio_set_intr_type(T_IRQ_Pin, GPIO_INTR_NEGEDGE);
 
     // ESP-IDF function to start the service that listens for interrupts
     // gpio_install_isr_service(0);
     // ESP-IDF function to connect a specific pin to my irq_handler
     // needs 3 args. the pin number, function address and the argument to pass to this function/address of current object
     gpio_isr_handler_add(T_IRQ_Pin, irq_handler, this);
+    gpio_set_intr_type(T_IRQ_Pin, GPIO_INTR_NEGEDGE);
 }
 
 // SPI is full duplex
@@ -135,7 +132,7 @@ void TouchScreen::handle_touch()
 }
 
 // ISR that runs if the screen is touched
-IRAM_ATTR void TouchScreen::irq_handler(void *arg)
+void IRAM_ATTR TouchScreen::irq_handler(void* arg)
 {
     // casting the generic void pointer 'arg' to a TouchScreen pointer
     /*  ...Explicit Type Cast...
@@ -179,8 +176,13 @@ bool TouchScreen::screenTouched()
     static int64_t lastTouchTime = 0;
     int64_t currentTime = esp_timer_get_time();
 
-    if (_touchTriggered)
+    if (_touchTriggered || gpio_get_level(T_IRQ_PIN) == 0)
     {
+        handle_touch(); // read SPI bus for coordinate data of screen touch
+        // if (_touchTriggered)
+        // {
+        // }
+
             /* DEBOUNCE BLOCK */
         // if the screen was touched less than 150ms ago, ignore the current touch
         if (currentTime - lastTouchTime < 150000)
@@ -190,8 +192,6 @@ bool TouchScreen::screenTouched()
             return false;
         }
 
-        handle_touch(); // read SPI bus for coordinate data of screen touch
-
         // filter out touches that are too light
         if (_rawX == 2047 && _rawY == 0)
         {
@@ -200,15 +200,18 @@ bool TouchScreen::screenTouched()
         }
 
         // wait for user to stop touching, which will end the interrupt signal
-        while (gpio_get_level(T_IRQ_Pin) == 0)
-        {
-            vTaskDelay(pdMS_TO_TICKS(10));
-        }
+        // while (gpio_get_level(T_IRQ_Pin) == 0)
+        // {
+        //     vTaskDelay(pdMS_TO_TICKS(10));
+        // }
 
         // update timestamp of last successful read
         lastTouchTime = esp_timer_get_time();
         _touchTriggered = false;
-        gpio_intr_enable(T_IRQ_Pin);   // clear residual triggers, re-enable interrupt for next press
+        if (gpio_get_level(T_IRQ_PIN) == 1)
+        {
+            gpio_intr_enable(T_IRQ_Pin);   // clear residual triggers, re-enable interrupt for next press
+        }
         
         if (_rawX == 2047 && _rawY == 0)
         {
@@ -218,4 +221,26 @@ bool TouchScreen::screenTouched()
         return true;
     }
     return false;
+}
+
+/* The following 2 functions are used to find and set the borders of the screen that
+    can be drawn on. */
+uint16_t TouchScreen::get_X()
+{
+    int pixelX = ((_rawX - 120) * 319) / 1848;
+
+    if (pixelX < 0) { pixelX = 0; }
+    if (pixelX > 319) { pixelX = 319; }
+
+    return pixelX;
+}
+
+uint16_t TouchScreen::get_Y()
+{
+    int pixelY = ((_rawY - 96) * 479) / 1824;
+
+    if (pixelY < 0) { pixelY = 0; }
+    if (pixelY > 479) { pixelY = 479; }
+
+    return pixelY;
 }

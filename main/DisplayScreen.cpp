@@ -140,7 +140,7 @@ void DisplayScreen::sendData(uint8_t data)
     2. And how big the block is. */
 void DisplayScreen::sendDataBlock(uint16_t* buffer, size_t size)
 {
-    printf("DEBUG: sendDataBlock using SPI Handle Address: %p\n", _dispHandle);
+    // printf("DEBUG: sendDataBlock using SPI Handle Address: %p\n", _dispHandle);
 
     // set as data to display
     gpio_set_level(D_DC_Pin, 1);

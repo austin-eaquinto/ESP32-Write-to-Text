@@ -3,8 +3,8 @@
 #include "Canvas.h"
 
 // constructors
-Canvas::Canvas(DisplayScreen* frame_buf)
-    : _display(frame_buf)
+Canvas::Canvas(DisplayScreen* frame_buf, TouchScreen* touch)
+    : _display(frame_buf), _touchscreen(touch)
 {
     _dmaBuffer = (uint16_t*) heap_caps_malloc(12800, MALLOC_CAP_DMA);
 }
@@ -19,7 +19,8 @@ void Canvas::clearCanvas(uint16_t color)
     }
 }
 
-/* Uses Bresenham's algorithm to draw lines. */
+/* A test function that draws a single line on the screen. 
+    Uses Bresenham's algorithm to draw lines. */
 void Canvas::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color)
 {
     // abs() returns absolute value of a number. 5 is 5, -7 is 7
@@ -72,14 +73,38 @@ void Canvas::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16
     }
 }
 
+void Canvas::drawPixel()
+{
+    Pixel newPixel;
+    newPixel.x = _touchscreen->get_X();
+    newPixel.y = _touchscreen->get_Y();
+    _drawingHistory.push_back(newPixel);
+}
+
 /* 'Conveyor belt' that sends the display data to the screen */
 void Canvas::render()
 {
     for(_sliceYStart = 0; _sliceYStart < 480; _sliceYStart += PORTRAIT_SLICE_HEIGHT)
     {
-        // clear RAM data
-        clearCanvas(0xFFFF);
-        drawLine(10, 10, 300, 400, 0x0000);
+        /* clear RAM data */
+        // the drawing area
+        if (_sliceYStart < 440)
+        {
+            clearCanvas(0xFFFF);
+            for (const auto& point : _drawingHistory)
+            {
+                if (point.y >= _sliceYStart && point.y < (_sliceYStart + PORTRAIT_SLICE_HEIGHT))
+                {
+                    int drawY = point.y - _sliceYStart;
+                    int drawPixels = (drawY * PORTRAIT_WIDTH) + point.x;
+                    _dmaBuffer[drawPixels] = 0x000;
+                }
+            }
+        }
+        // the reset/clear button
+        if (_sliceYStart >= 440) { clearCanvas(0x3333); }
+        
+        // drawLine(10, 10, 300, 400, 0x0000); // test line
         // args- x0,yStart,x1,yEnd
         _display->setAddrWindow(0,_sliceYStart,319,(_sliceYStart + PORTRAIT_SLICE_HEIGHT - 1));
         _display->sendDataBlock(_dmaBuffer, PORTRAIT_WIDTH * PORTRAIT_SLICE_HEIGHT);
