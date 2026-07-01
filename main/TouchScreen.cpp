@@ -179,13 +179,10 @@ bool TouchScreen::screenTouched()
     if (_touchTriggered || gpio_get_level(T_IRQ_PIN) == 0)
     {
         handle_touch(); // read SPI bus for coordinate data of screen touch
-        // if (_touchTriggered)
-        // {
-        // }
 
             /* DEBOUNCE BLOCK */
         // if the screen was touched less than 150ms ago, ignore the current touch
-        if (currentTime - lastTouchTime < 150000)
+        if (currentTime - lastTouchTime < 10000)
         {
             _touchTriggered = false;
             gpio_intr_enable(T_IRQ_Pin);   // re-enable pin if it was a ghost bounce
@@ -195,7 +192,7 @@ bool TouchScreen::screenTouched()
         // filter out touches that are too light
         if (_rawX == 2047 && _rawY == 0)
         {
-            vTaskDelay(pdMS_TO_TICKS(100));
+            // vTaskDelay(pdMS_TO_TICKS(100));
             handle_touch();
         }
 
@@ -223,11 +220,12 @@ bool TouchScreen::screenTouched()
     return false;
 }
 
-/* The following 2 functions are used to find and set the borders of the screen that
+/* CURRENTLY SET UP FOR PORTRAIT MODE - wires are at bottom
+ The following 2 functions are used to find and set the borders of the screen that
     can be drawn on. */
 uint16_t TouchScreen::get_X()
 {
-    int pixelX = ((_rawX - 120) * 319) / 1848;
+    int pixelX = ((_rawY - 74) * 319 + (1886 / 2)) / 1886;
 
     if (pixelX < 0) { pixelX = 0; }
     if (pixelX > 319) { pixelX = 319; }
@@ -237,7 +235,8 @@ uint16_t TouchScreen::get_X()
 
 uint16_t TouchScreen::get_Y()
 {
-    int pixelY = ((_rawY - 96) * 479) / 1824;
+    int pixelY = ((_rawX - 101) * 479 + (1899 / 2)) / 1899;
+    pixelY = 479 - pixelY; // this fixes the bug where physical draw right would display as drawing left
 
     if (pixelY < 0) { pixelY = 0; }
     if (pixelY > 479) { pixelY = 479; }

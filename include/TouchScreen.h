@@ -8,7 +8,7 @@
    this class only needs to know about the IRQ Pin and CS Pin. when the screen
    is touched the isr runs which tells the esp32 to pull T_CS low and send some
    data */
-#define T_IRQ_PIN GPIO_NUM_45
+#define T_IRQ_PIN ((gpio_num_t)45)
 #define T_CS_PIN GPIO_NUM_10
 
 class TouchScreen
@@ -40,7 +40,7 @@ public:
   // constructors
   TouchScreen();
   TouchScreen(spi_device_handle_t handle, 
-              gpio_num_t irqPin = T_IRQ_PIN, 
+              gpio_num_t irqPin = T_IRQ_PIN,
               gpio_num_t csPin = T_CS_PIN);
 
   // getters

@@ -66,8 +66,8 @@ extern "C" void app_main() {
         cnv.render();
         if (ts.screenTouched())
         {
-            printf("rawX: %u, rawY: %u\n", ts.get_raw_X(), ts.get_raw_Y());
-            printf("pixelX: %u, pixelY: %u\n", ts.get_X(), ts.get_Y());
+            // printf("rawX: %u, rawY: %u\n", ts.get_raw_X(), ts.get_raw_Y());
+            // printf("pixelX: %u, pixelY: %u\n", ts.get_X(), ts.get_Y());
 
             if (ts.get_Y() >= 440)
             {
@@ -80,6 +80,6 @@ extern "C" void app_main() {
                 cnv.drawPixel();
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
